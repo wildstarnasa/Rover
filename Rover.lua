@@ -138,6 +138,7 @@ function Rover:OnDocumentLoaded()
 	-- Timers
 	Apollo.RegisterTimerHandler("Rover_ModifierAddCheck", "OnModifierAddCheck", self)
 		
+	self.bIsInitialized = true
 	for sVarName, varData in pairs(self.tPreInitData) do
 		if varData == self.sSuperSecretNilReplacement then
 			self:AddWatch(sVarName, nil)
@@ -146,8 +147,6 @@ function Rover:OnDocumentLoaded()
 		end
 		self.tPreInitData[sVarName] = nil
 	end
-		
-	self.bIsInitialized = true
 end
 
 -----------------------------------------------------------------------------------------------

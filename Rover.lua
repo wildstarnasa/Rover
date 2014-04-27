@@ -1,4 +1,4 @@
-local sAddonVersion = "fork-23"
+local sAddonVersion = "fork-24"
 
 -- https://forums.wildstar-online.com/forums/index.php?/topic/15859-addon-introducing-rover/?p=161111
 local function spairs(t)
@@ -55,6 +55,7 @@ local eRoverColumns = {
 }
 -- Prefix for all handler functions, change to something more unique if needed.
 local handlerPrefix = "evtMon_"
+local channelPrefix = "chnMon_"
 local kStrOriginalIndex = "original__index"
 local kStrNodeIndex = "tree__node"
 local kStrDetailed = "detailed__data"
@@ -115,6 +116,7 @@ function Rover:OnDocumentLoaded()
 	self.wndRemoveBtn = self.wndMain:FindChild("s_Column1"):FindChild("RemoveVar")
 	self.wndEvtTree = self.wndMain:FindChild("EventsList")
 	self.wndTranscriptTree = self.wndMain:FindChild("TranscriptsList")
+	self.wndChnTree = self.wndMain:FindChild("ChannelsList")
 	self.wndParametersDialog = self.wndMain:FindChild("ParametersDialog")
 	self.wndWatchDialog = self.wndMain:FindChild("WatchDialog")
 
@@ -130,6 +132,7 @@ function Rover:OnDocumentLoaded()
 
 	self.tMonitoredEvents = {}
 	self.tTranscripted = {}
+	self.tChannels = {}
 
 	-- Event Handlers
 	Apollo.RegisterEventHandler("SendVarToRover", "AddWatch", self)
@@ -146,7 +149,7 @@ function Rover:OnDocumentLoaded()
 			self:AddWatch(sVarName, varData)
 		end
 		self.tPreInitData[sVarName] = nil
-	end
+	end		
 end
 
 -----------------------------------------------------------------------------------------------
@@ -903,6 +906,118 @@ function Rover:OnTranscriptTreeSelection( wndHandler, wndControl, hSelected, hPr
 	else
 		wndControl:SetNodeImage(hSelected, "")
 	end
+end
+
+-----------------------------------------------------------------------------------------------
+-- Rover ICComm Tracking Functions
+-----------------------------------------------------------------------------------------------
+
+function Rover:BuildChannelListener(strChannelName)
+	local funcStr = "return (function (self, ...) local cName = 'Channel: " .. strChannelName .. "' self:AddWatch(cName, arg, 0) end)"
+
+	-- Convert this string into a function
+	local loadedFunc = loadstring(funcStr)
+	-- Since this function actually returns the function we want, we return the function that the function we made made ... clear no?
+	return loadedFunc()
+end
+
+-- Adds listening to specified channel
+function Rover:ListenChannel(strChannelName)
+	if self.tChannels[strChannelName] ~= nil then
+		return
+	end
+		
+	-- Add new entry to tree for viewing
+	local hNewNode = self.wndChnTree:AddNode(0, strChannelName, "", strChannelName)
+	-- Store reference to node
+	self.tChannels[strChannelName] = hNewNode
+	
+	-- Build handler name, use the prefix + eventName
+	local handlerName = channelPrefix..strChannelName
+	-- Create handler and assign it to rover
+	Rover[handlerName] = self:BuildChannelListener(strChannelName)
+	-- Register handler with Apollo
+	ICCommLib.JoinChannel(strChannelName, handlerName, self)
+end
+
+-- Remove listening for the specified channel
+-- No current way to do this so we just return
+function Rover:OnRemoveChannelListening(strChannelName)
+	-- If we aren't monitoring this event, stop now!
+	if self.tMonitoredEvents[strChannelName] ~= nil then
+		-- Remove display node for event
+		self.wndEvtTree:DeleteNode(self.tMonitoredEvents[strChannelName])
+		
+		-- Build handler name, use the prefix + eventName
+		local handlerName = channelPrefix..strChannelName
+		-- Clear out monitored event reference
+		self.tMonitoredEvents[strChannelName] = nil
+		-- Stop Listening Somehow? No way I know of currently, so we just stop reporting
+		--	instead.
+		--Rover[handlerName].LeaveChannel(Rover)
+		-- Remove eventhandler function
+		Rover[handlerName] = nil
+	end
+end
+
+-- Remove all Monitored Channels
+function Rover:OnRemoveAllChannels( wndHandler, wndControl, eMouseButton )
+	for _, EventNode in pairs(self.tMonitoredEvents) do
+		local eventName = self.wndEvtTree:GetNodeData(EventNode)
+		self:OnRemoveChannelListening(eventName)
+	end
+end
+
+-- Add Channel button, toggles input section for entry of event name
+function Rover:OnAddChannelToggle( wndHandler, wndControl, eMouseButton )
+	local showWnd = self.wndMain:FindChild("AddChannelBtn"):IsChecked()
+	self.wndMain:FindChild("ChannelInputContainer"):Show(showWnd)
+	if showWnd then
+		self.wndMain:FindChild("ChannelInput"):SetFocus()
+	end
+end
+
+-- Close button on event form, toggle the event button then close via toggle func
+function Rover:OnChannelsCloseClick( wndHandler, wndControl, eMouseButton )
+	self.wndMain:FindChild("ChannelBtn"):SetCheck(false)
+	self:OnChannelsMonitorToggle()
+end
+
+-- Double clicking Channels deletes them, this doesn't really do anything now though.
+function Rover:OnChannelDoubleClick( wndHandler, wndControl, hNode )
+	local strChannelName = wndControl:GetNodeData(hNode)
+	self:OnRemoveChannelMonitor(strEventName)
+end
+
+function Rover:OnChannelTreeSelection( wndHandler, wndControl, hSelected, hPrevSelected )
+end
+
+-- Handles someone pressing enter after typing the name of the channel to listen to
+--	Also hides entry section once entered.
+function Rover:OnChannelInputReturn( wndHandler, wndControl, strText )
+	self:ListenChannel(strText)
+	wndControl:SetText("")
+	self.wndMain:FindChild("AddChannelBtn"):SetCheck(false)
+	self:OnAddChannelToggle()
+end
+
+-- Toggle if the Event Form is displayed or not
+function Rover:OnChannelsMonitorToggle( wndHandler, wndControl, eMouseButton )
+	-- Determine if we are going to be showing this window or not
+	local bShowWnd = self.wndMain:FindChild("ChannelBtn"):IsChecked()
+	if bShowWnd then
+		-- If we were previously showing one of the windows hide it
+		if self.wndPrevious then
+			self.wndPrevious:Show(false)
+		end
+		-- Record that this window is now showing
+		self.wndPrevious = self.wndMain:FindChild("ChannelsWindow")
+	else
+		-- We closed the window, so no window is showing now
+		self.wndPrevious = nil
+	end
+	-- Set proper shown state
+	self.wndMain:FindChild("ChannelsWindow"):Show(bShowWnd)
 end
 
 -----------------------------------------------------------------------------------------------

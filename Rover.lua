@@ -143,6 +143,7 @@ function Rover:OnDocumentLoaded()
 	
 	-- Horrible Hack
 	Apollo.RegisterTimerHandler("Rover_TreeRefresh_Hack", "OnTreeRefreshHack", self)
+	Apollo.CreateTimer("Rover_TreeRefresh_Hack", 0.1, true)
 		
 	self.bIsInitialized = true
 	for sVarName, varData in pairs(self.tPreInitData) do
@@ -263,8 +264,6 @@ function Rover:AddVariable(strName, var, hParent)
 	
 	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, tostring(var))
 	self:UpdateTimeStamp(hNewNode)
-		Apollo.CreateTimer("Rover_TreeRefresh_Hack", 0.1, false)
-
 end
 
 function Rover:OnExpandNode( wndHandler, wndControl, hNode )

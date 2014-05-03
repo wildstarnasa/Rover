@@ -1,4 +1,4 @@
-local sAddonVersion = "fork-24"
+local sAddonVersion = "fork-25"
 
 -- https://forums.wildstar-online.com/forums/index.php?/topic/15859-addon-introducing-rover/?p=161111
 local function spairs(t)
@@ -140,6 +140,9 @@ function Rover:OnDocumentLoaded()
 
 	-- Timers
 	Apollo.RegisterTimerHandler("Rover_ModifierAddCheck", "OnModifierAddCheck", self)
+	
+	-- Horrible Hack
+	Apollo.RegisterTimerHandler("Rover_TreeRefresh_Hack", "OnTreeRefreshHack", self)
 		
 	self.bIsInitialized = true
 	for sVarName, varData in pairs(self.tPreInitData) do
@@ -150,6 +153,10 @@ function Rover:OnDocumentLoaded()
 		end
 		self.tPreInitData[sVarName] = nil
 	end		
+end
+
+function Rover:OnTreeRefreshHack()
+	self.wndTree:SetVScrollPos(self.wndTree:GetVScrollPos())
 end
 
 -----------------------------------------------------------------------------------------------
@@ -256,6 +263,8 @@ function Rover:AddVariable(strName, var, hParent)
 	
 	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, tostring(var))
 	self:UpdateTimeStamp(hNewNode)
+		Apollo.CreateTimer("Rover_TreeRefresh_Hack", 0.1, false)
+
 end
 
 function Rover:OnExpandNode( wndHandler, wndControl, hNode )

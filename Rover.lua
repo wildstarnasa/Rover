@@ -140,6 +140,8 @@ function Rover:OnDocumentLoaded()
 	Apollo.RegisterEventHandler("SendVarToRover", "AddWatch", self)
 	Apollo.RegisterEventHandler("RemoveVarFromRover", "RemoveWatch", self)
 	Apollo.RegisterEventHandler("WindowManagementReady", "OnWindowManagementReady", self)
+	Apollo.RegisterEventHandler("InterfaceMenuListHasLoaded", "OnInterfaceMenuListHasLoaded", self)
+	Apollo.RegisterEventHandler("ToggleRoverWindow", "OnRoverOn", self)
 
 	-- Timers
 	Apollo.RegisterTimerHandler("Rover_ModifierAddCheck", "OnModifierAddCheck", self)
@@ -162,6 +164,10 @@ function Rover:OnWindowManagementReady()
 	Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "Rover"})
 end
 
+function Rover:OnInterfaceMenuListHasLoaded()
+  Event_FireGenericEvent("InterfaceMenuList_NewAddOn","Rover", {"ToggleRoverWindow", "", "Icon_Windows32_UI_CRB_InterfaceMenu_EscMenu"})
+end
+
 function Rover:OnTreeRefreshHack()
 	self.wndTree:SetVScrollPos(self.wndTree:GetVScrollPos())
 end
@@ -173,7 +179,7 @@ end
 
 -- on SlashCommand "/rover"
 function Rover:OnRoverOn()
-	self.wndMain:Show(true) -- show the window
+	self.wndMain:Show(not self.wndMain:IsVisible()) -- toggle the window
 end
 
 -- Refactored so can be used for timestamping Events

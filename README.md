@@ -83,5 +83,11 @@ When tables are added to Rover, you will see the "+" sign in the tree control. E
     2. May possibly cause instability (Haven't seen any yet but hey this is a warning) so a notice is logged into Rover when a table is wrapped.
   * If its trying to add a table it uses pcall to convert what you typed into lua and then checks if the return is a table.
   * Double click a logged item to remove the logging.
-6. "Remove All" button to clear the Rover console
-7. You can call SendVarToRover and RemoveVarFromRover even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as dependency.
+6. Channel Monitoring
+  * Click the "Channels" button
+  * Click "Add Channel"
+  * Type the name of the channel to monitor
+  * Press Enter
+  * Double click a monitored channel to remove the monitoring
+7. "Remove All" button to clear the Rover console
+8. You can call SendVarToRover and RemoveVarFromRover even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as dependency.

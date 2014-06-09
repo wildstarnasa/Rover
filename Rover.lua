@@ -35,13 +35,15 @@ end
 require "Window"
  
 -----------------------------------------------------------------------------------------------
--- Rover Module Definition
+-- Rover Module Definitions
 -----------------------------------------------------------------------------------------------
 local Rover = {}
 
 Rover.ADD_ALL = 0
 Rover.ADD_ONCE = 1
 Rover.ADD_DEFAULT = 2
+
+local tHackTimer
  
 -----------------------------------------------------------------------------------------------
 -- Constants
@@ -137,14 +139,14 @@ function Rover:OnDocumentLoaded()
 	-- Event Handlers
 	Apollo.RegisterEventHandler("SendVarToRover", "AddWatch", self)
 	Apollo.RegisterEventHandler("RemoveVarFromRover", "RemoveWatch", self)
+	Apollo.RegisterEventHandler("WindowManagementReady", "OnWindowManagementReady", self)
 
 	-- Timers
 	Apollo.RegisterTimerHandler("Rover_ModifierAddCheck", "OnModifierAddCheck", self)
 	
 	-- Horrible Hack
-	Apollo.RegisterTimerHandler("Rover_TreeRefresh_Hack", "OnTreeRefreshHack", self)
-	Apollo.CreateTimer("Rover_TreeRefresh_Hack", 0.1, true)
-		
+	tHackTimer = ApolloTimer.Create(0.1, true, "OnTreeRefreshHack", self)
+
 	self.bIsInitialized = true
 	for sVarName, varData in pairs(self.tPreInitData) do
 		if varData == self.sSuperSecretNilReplacement then
@@ -154,6 +156,10 @@ function Rover:OnDocumentLoaded()
 		end
 		self.tPreInitData[sVarName] = nil
 	end		
+end
+
+function Rover:OnWindowManagementReady()
+	Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "Rover"})
 end
 
 function Rover:OnTreeRefreshHack()
@@ -938,41 +944,38 @@ function Rover:ListenChannel(strChannelName)
 	-- Add new entry to tree for viewing
 	local hNewNode = self.wndChnTree:AddNode(0, strChannelName, "", strChannelName)
 	-- Store reference to node
-	self.tChannels[strChannelName] = hNewNode
+	self.tChannels[strChannelName] = { hNode = hNewNode }
 	
 	-- Build handler name, use the prefix + eventName
 	local handlerName = channelPrefix..strChannelName
 	-- Create handler and assign it to rover
-	Rover[handlerName] = self:BuildChannelListener(strChannelName)
+	self[handlerName] = self:BuildChannelListener(strChannelName)
 	-- Register handler with Apollo
-	ICCommLib.JoinChannel(strChannelName, handlerName, self)
+	self.tChannels[strChannelName].channel = ICCommLib.JoinChannel(strChannelName, handlerName, self)
 end
 
 -- Remove listening for the specified channel
 -- No current way to do this so we just return
 function Rover:OnRemoveChannelListening(strChannelName)
 	-- If we aren't monitoring this event, stop now!
-	if self.tMonitoredEvents[strChannelName] ~= nil then
+	if self.tChannels[strChannelName] ~= nil then
 		-- Remove display node for event
-		self.wndEvtTree:DeleteNode(self.tMonitoredEvents[strChannelName])
+		self.wndChnTree:DeleteNode(self.tChannels[strChannelName].hNode)
 		
 		-- Build handler name, use the prefix + eventName
 		local handlerName = channelPrefix..strChannelName
-		-- Clear out monitored event reference
-		self.tMonitoredEvents[strChannelName] = nil
-		-- Stop Listening Somehow? No way I know of currently, so we just stop reporting
-		--	instead.
-		--Rover[handlerName].LeaveChannel(Rover)
+		-- Clear out monitored event reference, this removes the channel object, hopefully this stops us listening
+		self.tChannels[strChannelName] = nil
 		-- Remove eventhandler function
-		Rover[handlerName] = nil
+		self[handlerName] = nil
 	end
 end
 
 -- Remove all Monitored Channels
 function Rover:OnRemoveAllChannels( wndHandler, wndControl, eMouseButton )
-	for _, EventNode in pairs(self.tMonitoredEvents) do
-		local eventName = self.wndEvtTree:GetNodeData(EventNode)
-		self:OnRemoveChannelListening(eventName)
+	for _, ChannelNode in pairs(self.tChannels) do
+		local strChannelName = self.wndChnTree:GetNodeData(ChannelNode.hNode)
+		self:OnRemoveChannelListening(strChannelName)
 	end
 end
 
@@ -994,10 +997,7 @@ end
 -- Double clicking Channels deletes them, this doesn't really do anything now though.
 function Rover:OnChannelDoubleClick( wndHandler, wndControl, hNode )
 	local strChannelName = wndControl:GetNodeData(hNode)
-	self:OnRemoveChannelMonitor(strEventName)
-end
-
-function Rover:OnChannelTreeSelection( wndHandler, wndControl, hSelected, hPrevSelected )
+	self:OnRemoveChannelListening(strChannelName)
 end
 
 -- Handles someone pressing enter after typing the name of the channel to listen to

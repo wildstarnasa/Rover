@@ -1,4 +1,4 @@
-local sAddonVersion = "fork-25"
+local sAddonVersion = "fork-26"
 
 -- https://forums.wildstar-online.com/forums/index.php?/topic/15859-addon-introducing-rover/?p=161111
 local function spairs(t)

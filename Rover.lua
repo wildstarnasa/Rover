@@ -43,6 +43,7 @@ Rover.ADD_ALL = 0
 Rover.ADD_ONCE = 1
 Rover.ADD_DEFAULT = 2
 
+local tModifierTimer
 local tHackTimer
  
 -----------------------------------------------------------------------------------------------
@@ -61,6 +62,24 @@ local channelPrefix = "chnMon_"
 local kStrOriginalIndex = "original__index"
 local kStrNodeIndex = "tree__node"
 local kStrDetailed = "detailed__data"
+
+-----------------------------------------------------------------------------------------------
+-- Custom Userdata Displays - SinusPi's Idea
+-----------------------------------------------------------------------------------------------
+
+Rover.userdataDisplay = {
+	[Unit] = function(u) return ("<UNIT %s (#%d)>"):format(u:GetName(), u:GetId()) end,
+	[Episode] = function(u) return ("<EPISODE #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
+	[PathEpisode] = function(u) return ("<PATHEPISODE \"%s\" (%s)>"):format(u:GetName(),u:GetWorldZone()) end,
+	[Quest] = function(u) return ("<QUEST #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
+	[PathMission] = function(u) return ("<PATHMISSION #%d \"%s\" (%d/%d)>"):format(u:GetId(),u:GetName(),u:GetNumCompleted(),u:GetNumNeeded()) end,
+	[Item] = function(u) return ("<ITEM #%d \"%s\">"):format(u:GetItemId(), u:GetName()) end,
+	[Vector3] = function(u)
+			local s = tostring(u)
+			local x,y,z = s:match("Vector3%((.*), (.*), (.*)%)")
+			if z then return ("Vector3 (%.2f, %.2f, %.2f)"):format(tonumber(x),tonumber(y),tonumber(z)) end
+		end,
+}
 
 -----------------------------------------------------------------------------------------------
 -- Initialization
@@ -94,6 +113,7 @@ end
 function Rover:OnLoad()
     -- load our form file
 	self.xmlDoc = XmlDoc.CreateFromFile("Rover.xml")
+	Apollo.LoadSprites("RoverSprites.xml")
 	-- Register the callback for when the xml is finished loading
 	self.xmlDoc:RegisterCallback("OnDocumentLoaded", self)
 end
@@ -127,6 +147,8 @@ function Rover:OnDocumentLoaded()
 	-- e.g. Apollo.RegisterEventHandler("KeyDown", "OnKeyDown", self)
 	Apollo.RegisterSlashCommand("rover", "OnRoverOn", self)
 
+	self.wndMain:FindChild("AutoScrollButton"):SetCheck(true)
+
 	self.wndTree:SetColumnWidth(eRoverColumns.VarName, 200)
 	self.wndTree:SetColumnWidth(eRoverColumns.Type, 150)
 	self.wndTree:SetColumnWidth(eRoverColumns.Value, 300)
@@ -143,9 +165,6 @@ function Rover:OnDocumentLoaded()
 	Apollo.RegisterEventHandler("InterfaceMenuListHasLoaded", "OnInterfaceMenuListHasLoaded", self)
 	Apollo.RegisterEventHandler("ToggleRoverWindow", "OnRoverOn", self)
 
-	-- Timers
-	Apollo.RegisterTimerHandler("Rover_ModifierAddCheck", "OnModifierAddCheck", self)
-	
 	-- Horrible Hack
 	tHackTimer = ApolloTimer.Create(0.1, true, "OnTreeRefreshHack", self)
 
@@ -165,11 +184,21 @@ function Rover:OnWindowManagementReady()
 end
 
 function Rover:OnInterfaceMenuListHasLoaded()
-  Event_FireGenericEvent("InterfaceMenuList_NewAddOn","Rover", {"ToggleRoverWindow", "", "Icon_Windows32_UI_CRB_InterfaceMenu_EscMenu"})
+	Event_FireGenericEvent("InterfaceMenuList_NewAddOn","Rover", {"ToggleRoverWindow", "", "RoverSprites:RoverIcon"})
 end
 
 function Rover:OnTreeRefreshHack()
-	self.wndTree:SetVScrollPos(self.wndTree:GetVScrollPos())
+	local tTrees = { self.wndTree, self.wndEvtTree, self.wndTranscriptTree, self.wndChnTree }
+	for i, tree in ipairs(tTrees) do
+		local nPosDestination = tree:GetVScrollPos()
+		if i == 1 then -- The main Tree can autoscroll down, the rest don't
+			local atBottom = not self.wndMain:FindChild("AutoScrollButton"):IsChecked()  -- Lock icon has reverse logic apparently
+			if atBottom then
+				nPosDestination = tree:GetVScrollRange()
+			end
+		end
+		tree:SetVScrollPos(nPosDestination)
+	end
 end
 
 -----------------------------------------------------------------------------------------------
@@ -178,8 +207,15 @@ end
 -- Define general functions here
 
 -- on SlashCommand "/rover"
-function Rover:OnRoverOn()
-	self.wndMain:Show(not self.wndMain:IsVisible()) -- toggle the window
+function Rover:OnRoverOn(strCommand, strParam)
+	self.wndMain:Show(not self.wndMain:IsVisible() or (strParam and strParam ~= "")) -- toggle the window
+	if strParam and strParam ~= "" then
+		local bSuccess, vWatch = pcall(loadstring("return " .. strParam))
+		if not bSuccess then
+			return
+		end
+		self:AddWatch(strParam, vWatch)
+	end
 end
 
 -- Refactored so can be used for timestamping Events
@@ -248,6 +284,15 @@ end
 -----------------------------------------------------------------------------------------------
 -- Rover Variable Tracking Functions
 -----------------------------------------------------------------------------------------------
+function Rover:AnalyzeUserData(userdata)
+	for base, fnDisplay in pairs(Rover.userdataDisplay) do
+		if base.is and base.is(userdata) then return fnDisplay(userdata) end
+		if base.Is and base.Is(userdata) then return fnDisplay(userdata) end
+		if base.isInstance and base.isInstance(userdata) then return fnDisplay(userdata) end
+	end
+	return tostring(userdata)
+end
+
 
 function Rover:AddVariable(strName, var, hParent)
 	if hParent == 0 then
@@ -274,7 +319,9 @@ function Rover:AddVariable(strName, var, hParent)
 		self.wndTree:CollapseNode(hNewNode)
 	end
 	
-	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, tostring(var))
+	local str = strType == "userdata" and self:AnalyzeUserData(var) or tostring(var)
+
+	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, str)
 	self:UpdateTimeStamp(hNewNode)
 end
 
@@ -303,12 +350,16 @@ end
 
 function Rover:OnTwoClicks( wndHandler, wndControl, hNode )
 	local var = self.wndTree:GetNodeData(hNode)
-	if type(var) ~= "function" then
+	local hParent = self.wndTree:GetParentNode(hNode)
+
+	-- Play sounds, courtesy of SinusPi
+	if type(var) == "number" and self.wndTree:GetNodeData(hParent) == _G.Sound then
+		Sound.Play(var)
+		return
+	elseif type(var) ~= "function" then
 		return
 	end
 	
-	local hParent = self.wndTree:GetParentNode(hNode)
-
 	if Apollo.IsShiftKeyDown() then
 		self.wndParametersDialog:SetData(hNode)
 		self.wndParametersDialog:Show(true)
@@ -512,12 +563,15 @@ function Rover:EnableModifierAddTop()
 end
 
 function Rover:EnableModifierTimer()
-	Apollo.CreateTimer("Rover_ModifierAddCheck", 0.1, true)
+	if tModifierTimer then
+		tModifierTimer:Start()
+	else
+		tModifierTimer = ApolloTimer.Create(0.1, true, "OnModifierAddCheck", self)
+	end
 end
 
 function Rover:DisableModifierTimer()
-	Apollo.CreateTimer("Rover_ModifierAddCheck", 1, false)
-	Apollo.StopTimer("Rover_ModifierAddCheck")
+	tModifierTimer:Stop()
 end
 
 function Rover:OnModifierAddCheck()
@@ -551,19 +605,11 @@ end
 -----------------------------------------------------------------------------------------------
 
 function Rover:BuildMonitorFunc(eventName)
-	-- Build a string to return the needed function, the function has a local variable with the event name.
-	--	This local variable is then added to the variable list along with all arguments to the event.  A RoverID (RID) is generated and passed as well.
-	--	This is needed because loadstring generates a function that accepts no arguments, which is not what we need, we need a function that accepts
-	--	arguments.  So we make a function that accepts no arguments that will return the function we actually want.  Sorry this isn't as clear as
-	--	I'd like but not sure of a better way to phrase this.  This whole rigamarole is needed because there is no way to determine the name
-	--	of a fired event.  Bitwise is contemplating adding an API call to get the event name, if this happens then the need for this goes away
-	--	and the event handler can be the same for all monitored events.
-	local funcStr = "return (function (self, ...) local eName = 'Event: " .. eventName .. "' self:AddWatch(eName, arg, 0) end)"
-
-	-- Convert this string into a function
-	local loadedFunc = loadstring(funcStr)
-	-- Since this function actually returns the function we want, we return the function that the function we made made ... clear no?
-	return loadedFunc()
+	-- Use a closure instead, much cleaner than previous method
+	return  function(self,...)
+				local eName = "Event: " .. eventName
+				self:AddWatch(eName, arg, 0)
+			end
 end
 
 -- Adds Event Monitoring for specified event
@@ -933,12 +979,11 @@ end
 -----------------------------------------------------------------------------------------------
 
 function Rover:BuildChannelListener(strChannelName)
-	local funcStr = "return (function (self, ...) local cName = 'Channel: " .. strChannelName .. "' self:AddWatch(cName, arg, 0) end)"
-
-	-- Convert this string into a function
-	local loadedFunc = loadstring(funcStr)
-	-- Since this function actually returns the function we want, we return the function that the function we made made ... clear no?
-	return loadedFunc()
+	-- Closure for channel monitoring
+	return  function(self, ...)
+				local cName = "Channel: " .. strChannelName
+				self:AddWatch(cName, arg, 0)
+			end
 end
 
 -- Adds listening to specified channel

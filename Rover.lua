@@ -291,6 +291,16 @@ function Rover:AnalyzeUserData(userdata)
 	return tostring(userdata)
 end
 
+function Rover:SelectIcon(var, strType, hParent)
+	local retVal
+	if strType == "function" then
+		retVal = "CRB_Basekit:kitIcon_Holo_LFG"
+	elseif strType == "number" and self.wndTree:GetNodeData(hParent) == _G.Sound then
+		retVal = "RoverSprites:SoundIcon"
+	end
+
+	return retVal
+end
 
 function Rover:AddVariable(strName, var, hParent)
 	if hParent == 0 then
@@ -319,6 +329,11 @@ function Rover:AddVariable(strName, var, hParent)
 	
 	local str = strType == "userdata" and self:AnalyzeUserData(var) or tostring(var)
 
+	local nodeIcon = self:SelectIcon(var, strType, hParent)
+	if nodeIcon then
+		self.wndTree:SetNodeImage(hNewNode, nodeIcon)
+	end
+	
 	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, str)
 	self:UpdateTimeStamp(hNewNode)
 end
@@ -477,8 +492,30 @@ end
 function Rover:OnRemoveVarClicked(wndHandler, wndControl)
 	local hNode = self.wndTree:GetSelectedNode()
 	if hNode > 0 and self.wndTree:GetParentNode(hNode) == 0 then
-		self.tManagedVars[self.wndTree:GetNodeText(hNode, eRoverColumns.VarName)] = nil
+		local strText = self.wndTree:GetNodeText(hNode, eRoverColumns.VarName)
+		self.tManagedVars[strText] = nil
 		self.wndTree:DeleteNode(hNode)
+
+		if not Apollo.IsShiftKeyDown() then return end
+
+		local strMonitorName, strItemName = strText:match("(%w-): ([^%s]+)")
+
+		if strMonitorName == "Event" then
+			self:OnRemoveEventMonitor(strItemName)
+		elseif strMonitorName == "Channel" then
+			self:OnRemoveChannelListening(strItemName)
+		else
+			return  -- Nothing special
+		end
+
+		local strMatch = strMonitorName .. ": " .. strItemName
+		for k,v in pairs(self.tManagedVars) do
+			local strNodeText = self.wndTree:GetNodeText(v, eRoverColumns.VarName)
+			if strNodeText and strNodeText:match(strMatch) then
+				self.wndTree:DeleteNode(v)
+				self.tManagedVars[k] = nil
+			end
+		end
 	end
 end
 
@@ -604,8 +641,8 @@ end
 
 function Rover:BuildMonitorFunc(eventName)
 	-- Use a closure instead, much cleaner than previous method
+	local eName = "Event: " .. eventName
 	return  function(self,...)
-				local eName = "Event: " .. eventName
 				self:AddWatch(eName, arg, 0)
 			end
 end
@@ -978,8 +1015,8 @@ end
 
 function Rover:BuildChannelListener(strChannelName)
 	-- Closure for channel monitoring
+	local cName = "Channel: " .. strChannelName
 	return  function(self, ...)
-				local cName = "Channel: " .. strChannelName
 				self:AddWatch(cName, arg, 0)
 			end
 end

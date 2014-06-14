@@ -129,7 +129,7 @@ function Rover:OnDocumentLoaded()
 	self.wndMain:Show(false, true)
 
 	-- if the xmlDoc is no longer needed, you should set it to nil
-	self.xmlDoc = nil
+	-- self.xmlDoc = nil
 		
 	-- save some windows for later
 	self.wndTree = self.wndMain:FindChild("Variables")
@@ -369,6 +369,9 @@ function Rover:OnTwoClicks( wndHandler, wndControl, hNode )
 	if type(var) == "number" and self.wndTree:GetNodeData(hParent) == _G.Sound then
 		Sound.Play(var)
 		return
+	elseif type(var) == "string" then
+		self:GenerateTextBox(self.wndTree:GetNodeText(hNode, eRoverColumns.VarName), var)
+		return
 	elseif type(var) ~= "function" then
 		return
 	end
@@ -530,6 +533,15 @@ function Rover:OnRemoveAllVars( wndHandler, wndControl, eMouseButton )
 	end
 end
 
+function Rover:GenerateTextBox(strName, strText)
+	local wndTextBox = Apollo.LoadForm(self.xmlDoc, "TextBox", nil, self)
+	wndTextBox:FindChild("Title"):SetText(strName)
+	wndTextBox:FindChild("Text"):SetText(strText)
+end
+
+function Rover:OnTextBoxClose( wndHandler, wndControl, eMouseButton )
+	wndControl:GetParent():GetParent():Destroy()
+end
 -----------------------------------------------------------------------------------------------
 -- Rover Add buttons
 -----------------------------------------------------------------------------------------------

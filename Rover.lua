@@ -43,6 +43,13 @@ Rover.ADD_DEFAULT = 2
 
 local tModifierTimer
 local tHackTimer
+local tXMLRefs = {}
+local tEvents = {}
+local tBlacklistedEvents = {
+	["NextFrame"] = true,
+	["VarChange_FrameCount"] = true,
+	["ActionBarDescriptionSpell"] = true,
+}
  
 -----------------------------------------------------------------------------------------------
 -- Constants
@@ -66,17 +73,18 @@ local kStrDetailed = "detailed__data"
 -----------------------------------------------------------------------------------------------
 
 Rover.userdataDisplay = {
-	[Unit] = function(u) return ("<UNIT %s (#%d)>"):format(u:GetName(), u:GetId()) end,
 	[Episode] = function(u) return ("<EPISODE #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
-	[PathEpisode] = function(u) return ("<PATHEPISODE \"%s\" (%s)>"):format(u:GetName(),u:GetWorldZone()) end,
-	[Quest] = function(u) return ("<QUEST #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
-	[PathMission] = function(u) return ("<PATHMISSION #%d \"%s\" (%d/%d)>"):format(u:GetId(),u:GetName(),u:GetNumCompleted(),u:GetNumNeeded()) end,
 	[Item] = function(u) return ("<ITEM #%d \"%s\">"):format(u:GetItemId(), u:GetName()) end,
+	[PathEpisode] = function(u) return ("<PATHEPISODE \"%s\" (%s)>"):format(u:GetName(),u:GetWorldZone()) end,
+	[PathMission] = function(u) return ("<PATHMISSION #%d \"%s\" (%d/%d)>"):format(u:GetId(),u:GetName(),u:GetNumCompleted(),u:GetNumNeeded()) end,
+	[Quest] = function(u) return ("<QUEST #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
+	[Unit] = function(u) return ("<UNIT %s (#%d)>"):format(u:GetName(), u:GetId()) end,
 	[Vector3] = function(u)
 			local s = tostring(u)
 			local x,y,z = s:match("Vector3%((.*), (.*), (.*)%)")
 			if z then return ("Vector3 (%.2f, %.2f, %.2f)"):format(tonumber(x),tonumber(y),tonumber(z)) end
 		end,
+	[Window] = function(u) return ("<WINDOW \"%s\">"):format(u:GetName()) end,
 }
 
 -----------------------------------------------------------------------------------------------
@@ -109,9 +117,22 @@ end
 -- Rover OnLoad
 -----------------------------------------------------------------------------------------------
 function Rover:OnLoad()
+	--Time to get crazy... lets load our own toc
+	local tTOCXml = XmlDoc.CreateFromFile("toc.xml"):ToTable()
+	self.tXML = {}
+	nIndex = 1
+	for k,v in pairs(tTOCXml) do
+		if v.__XmlNode == "Events" then
+			local pDir = Apollo.GetAssetFolder() .. "\\" .. v.Name
+			table.insert(tXMLRefs, Apollo.GetAssetFolder() .. "\\" .. v.Name)
+			self.tXML[nIndex] = XmlDoc.CreateFromFile(Apollo.GetAssetFolder() .. "\\" .. v.Name):ToTable()
+			nIndex = nIndex + 1
+		end
+	end
+
     -- load our form file
 	self.xmlDoc = XmlDoc.CreateFromFile("Rover.xml")
-	Apollo.LoadSprites("RoverSprites.xml")
+	Apollo.LoadSprites("RoverSprites.xml", "RoverSprites")
 	-- Register the callback for when the xml is finished loading
 	self.xmlDoc:RegisterCallback("OnDocumentLoaded", self)
 end
@@ -333,6 +354,11 @@ function Rover:AddVariable(strName, var, hParent)
 	if nodeIcon then
 		self.wndTree:SetNodeImage(hNewNode, nodeIcon)
 	end
+
+	-- Per SinusPi strings over 100 cause a crash.. double click to view instead!
+	if #str > 100 then
+		str = str:sub(1,100) .. " ..."
+	end
 	
 	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, str)
 	self:UpdateTimeStamp(hNewNode)
@@ -385,10 +411,14 @@ function Rover:OnTwoClicks( wndHandler, wndControl, hNode )
 	end
 
 	self.wndTree:DeleteChildren(hNode)
+
+	local hGrandParent = self.wndTree:GetParentNode(hParent)
 	
 	self:AddCallResult(hNode, pcall(function()
 		if self.wndTree:GetNodeText(hParent) == 'metatable' then
 			return var(self.wndTree:GetNodeData(self.wndTree:GetParentNode(hParent)))
+		elseif hGrandParent and self.wndTree:GetNodeText(hGrandParent) == 'metatable' then
+			return var(self.wndTree:GetNodeData(self.wndTree:GetParentNode(hGrandParent)))
 		else
 			return var()
 		end
@@ -651,16 +681,44 @@ end
 -- Rover Event Monitoring
 -----------------------------------------------------------------------------------------------
 
-function Rover:BuildMonitorFunc(eventName)
+local function ParseEventXML(tXML)
+	for _,v in ipairs(tXML) do
+		if v.__XmlNode == "Event" then
+			tEvents[v.Name] = v.Desc or ""
+		end
+		if v[1] then
+			ParseEventXML(v)
+		end
+	end
+end
+
+function Rover:OnAddAllEvents()
+	if tXMLRefs then
+		for _,file in ipairs(tXMLRefs) do
+			local tXML = XmlDoc.CreateFromFile(file):ToTable()
+			ParseEventXML(tXML)
+		end
+		tXMLRefs = nil
+	end
+	for k,v in spairs(tEvents) do
+		if not tBlacklistedEvents[k] then
+			self:OnAddEventMonitor(k, v)
+		end
+	end
+end
+
+function Rover:BuildMonitorFunc(eventName, strDesc)
 	-- Use a closure instead, much cleaner than previous method
 	local eName = "Event: " .. eventName
+	local strDescription = strDesc and strDesc ~= "" and strDesc or nil
 	return  function(self,...)
+				arg.strDesc = strDescription
 				self:AddWatch(eName, arg, 0)
 			end
 end
 
 -- Adds Event Monitoring for specified event
-function Rover:OnAddEventMonitor(eventName)
+function Rover:OnAddEventMonitor(eventName, strDesc)
 	-- If we are already monitoring this then just stop now!
 	if self.tMonitoredEvents[eventName] ~= nil then
 		return
@@ -679,7 +737,7 @@ function Rover:OnAddEventMonitor(eventName)
 	-- Build handler name, use the prefix + eventName
 	local handlerName = handlerPrefix..eventName
 	-- Create handler and assign it to rover
-	Rover[handlerName] = self:BuildMonitorFunc(eventName)
+	Rover[handlerName] = self:BuildMonitorFunc(eventName, strDesc)
 	-- Register handler with Apollo
 	Apollo.RegisterEventHandler(eventName, handlerName, self)
 end
@@ -1028,8 +1086,8 @@ end
 function Rover:BuildChannelListener(strChannelName)
 	-- Closure for channel monitoring
 	local cName = "Channel: " .. strChannelName
-	return  function(self, ...)
-				self:AddWatch(cName, arg, 0)
+	return  function(self, channel, tMsg, strSender)
+				self:AddWatch(cName, { channel = channel, tMsg = tMsg, strSender = strSender }, 0)
 			end
 end
 

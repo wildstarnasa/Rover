@@ -122,7 +122,7 @@ function Rover:OnLoad()
 	self.tXML = {}
 	nIndex = 1
 	for k,v in pairs(tTOCXml) do
-		if v.__XmlNode == "Events" then
+		if v.__XmlNode == "DocData" then
 			local pDir = Apollo.GetAssetFolder() .. "\\" .. v.Name
 			table.insert(tXMLRefs, Apollo.GetAssetFolder() .. "\\" .. v.Name)
 			self.tXML[nIndex] = XmlDoc.CreateFromFile(Apollo.GetAssetFolder() .. "\\" .. v.Name):ToTable()

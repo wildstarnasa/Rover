@@ -42,7 +42,7 @@ Rover.ADD_ONCE = 1
 Rover.ADD_DEFAULT = 2
 
 local tModifierTimer
-local tHackTimer
+local tBottomTimer
 local tXMLRefs = {}
 local tEvents = {}
 local tBlacklistedEvents = {
@@ -112,7 +112,6 @@ function Rover:Init()
     Apollo.RegisterAddon(self)
 end
  
-
 -----------------------------------------------------------------------------------------------
 -- Rover OnLoad
 -----------------------------------------------------------------------------------------------
@@ -184,9 +183,6 @@ function Rover:OnDocumentLoaded()
 	Apollo.RegisterEventHandler("InterfaceMenuListHasLoaded", "OnInterfaceMenuListHasLoaded", self)
 	Apollo.RegisterEventHandler("ToggleRoverWindow", "OnRoverOn", self)
 
-	-- Horrible Hack
-	tHackTimer = ApolloTimer.Create(0.1, true, "OnTreeRefreshHack", self)
-
 	self.bIsInitialized = true
 	for sVarName, varData in pairs(self.tPreInitData) do
 		if varData == self.sSuperSecretNilReplacement then
@@ -206,18 +202,8 @@ function Rover:OnInterfaceMenuListHasLoaded()
 	Event_FireGenericEvent("InterfaceMenuList_NewAddOn","Rover", {"ToggleRoverWindow", "", "RoverSprites:RoverIcon"})
 end
 
-function Rover:OnTreeRefreshHack()
-	local tTrees = { self.wndTree, self.wndEvtTree, self.wndTranscriptTree, self.wndChnTree }
-	for i, tree in ipairs(tTrees) do
-		local nPosDestination = tree:GetVScrollPos()
-		if i == 1 then -- The main Tree can autoscroll down, the rest don't
-			local atBottom = not self.wndMain:FindChild("AutoScrollButton"):IsChecked()  -- Lock icon has reverse logic apparently
-			if atBottom then
-				nPosDestination = tree:GetVScrollRange()
-			end
-		end
-		tree:SetVScrollPos(nPosDestination)
-	end
+function Rover:JumpToBottom()
+	self.wndTree:SetVScrollPos(self.wndTree:GetVScrollRange())
 end
 
 -----------------------------------------------------------------------------------------------
@@ -362,6 +348,14 @@ function Rover:AddVariable(strName, var, hParent)
 	
 	self.wndTree:SetNodeText(hNewNode, eRoverColumns.Value, str)
 	self:UpdateTimeStamp(hNewNode)
+	
+	if not self.wndMain:FindChild("AutoScrollButton"):IsChecked() then -- Lock icon has reverse logic apparently
+		if tBottomTimer then
+			tBottomTimer:Start()
+		else
+			tBottomTimer = ApolloTimer.Create(0.1, false, "JumpToBottom", self)
+		end
+	end
 end
 
 function Rover:OnExpandNode( wndHandler, wndControl, hNode )

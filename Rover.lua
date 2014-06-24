@@ -73,12 +73,15 @@ local kStrDetailed = "detailed__data"
 -----------------------------------------------------------------------------------------------
 
 Rover.userdataDisplay = {
+	[ApolloColor] = function(u) return ("<APOLLOCOLOR %s>"):format(tostring(u)) end,
+	[ApolloTimer] = function(u) return ("<APOLLOTIMER %s>"):format(tostring(u)) end,
+	[CColor] = function(u) return ("<CCOLOR %s>"):format(tostring(u)) end,
 	[Episode] = function(u) return ("<EPISODE #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
 	[Item] = function(u) return ("<ITEM #%d \"%s\">"):format(u:GetItemId(), u:GetName()) end,
 	[PathEpisode] = function(u) return ("<PATHEPISODE \"%s\" (%s)>"):format(u:GetName(),u:GetWorldZone()) end,
 	[PathMission] = function(u) return ("<PATHMISSION #%d \"%s\" (%d/%d)>"):format(u:GetId(),u:GetName(),u:GetNumCompleted(),u:GetNumNeeded()) end,
 	[Quest] = function(u) return ("<QUEST #%d \"%s\">"):format(u:GetId(),u:GetTitle()) end,
-	[Unit] = function(u) return ("<UNIT %s (#%d)>"):format(u:GetName(), u:GetId()) end,
+	[Unit] = function(u) return ("<UNIT %s (#%d)>"):format(u:GetName(), (u:GetId() or -1)) end,
 	[Vector3] = function(u)
 			local s = tostring(u)
 			local x,y,z = s:match("Vector3%((.*), (.*), (.*)%)")
@@ -119,7 +122,7 @@ function Rover:OnLoad()
 	--Time to get crazy... lets load our own toc
 	local tTOCXml = XmlDoc.CreateFromFile("toc.xml"):ToTable()
 	self.tXML = {}
-	nIndex = 1
+	local nIndex = 1
 	for k,v in pairs(tTOCXml) do
 		if v.__XmlNode == "DocData" then
 			local pDir = Apollo.GetAssetFolder() .. "\\" .. v.Name

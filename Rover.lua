@@ -256,6 +256,7 @@ function Rover:OnRoverOn(strCommand, strParam)
 	if strParam and strParam ~= "" then
 		local bSuccess, vWatch = pcall(loadstring("return " .. strParam))
 		if not bSuccess then
+			self:AddWatch(strParam, self:ParseErrorString(vWatch))
 			return
 		end
 		self:AddWatch(strParam, vWatch)
@@ -1267,6 +1268,7 @@ function Rover:OnBookmarkSelection( wndHandler, wndControl, hSelected, hPrevSele
 	if not strBookmarkName then return end
 	local bSuccess, vWatch = pcall(loadstring("return " .. strBookmarkName))
 	if not bSuccess then
+		self:AddWatch(strBookmarkName, self:ParseErrorString(vWatch))
 		return
 	end
 	self:AddWatch(strBookmarkName, vWatch)

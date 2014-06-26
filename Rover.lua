@@ -204,6 +204,7 @@ function Rover:OnDocumentLoaded()
 	self.tMonitoredEvents = {}
 	self.tTranscripted = {}
 	self.tChannels = {}
+	self.tBookmarks = {}
 
 	-- Event Handlers
 	Apollo.RegisterEventHandler("SendVarToRover", "AddWatch", self)

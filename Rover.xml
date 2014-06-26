@@ -150,8 +150,8 @@
                 <Event Name="ButtonSignal" Function="OnAddVar"/>
             </Control>
             <Control Class="Button" Base="CRB_Basekit:kitBtn_List_HoloSort" Font="CRB_Pixel_O" ButtonType="Check" RadioGroup="" LAnchorPoint="1" LAnchorOffset="-243" TAnchorPoint="0" TAnchorOffset="0" RAnchorPoint="1" RAnchorOffset="-183" BAnchorPoint="1" BAnchorOffset="1" DT_VCENTER="1" DT_CENTER="1" TooltipType="OnCursor" Name="BookmarkBtn" BGColor="ffffffff" TextColor="ffffffff" TooltipColor="" NormalTextColor="ffffffff" PressedTextColor="ffffffff" FlybyTextColor="ffffffff" PressedFlybyTextColor="ffffffff" DisabledTextColor="ffffffff" Text="" TextId="" Template="CRB_Datachron" GlobalRadioGroup="Rover_Monitor_Group" Tooltip="">
-                <Event Name="ButtonCheck" Function="OnBookmarksMonitorToggle"/>
-                <Event Name="ButtonUncheck" Function="OnBookmarksMonitorToggle"/>
+                <Event Name="ButtonCheck" Function="OnBookmarksToggle"/>
+                <Event Name="ButtonUncheck" Function="OnBookmarksToggle"/>
                 <Control Class="Window" LAnchorPoint="0" LAnchorOffset="0" TAnchorPoint="0" TAnchorOffset="0" RAnchorPoint="1" RAnchorOffset="-1" BAnchorPoint="1" BAnchorOffset="-1" RelativeToClient="1" Font="CRB_Pixel_O" Text="Bookmarks" Template="Default" TooltipType="OnCursor" Name="BookmarkLabel" BGColor="ffffffff" TextColor="ffffffff" TooltipColor="" TextId="" DT_VCENTER="1" DT_CENTER="1"/>
             </Control>
             <Control Class="Button" Base="CRB_Basekit:kitBtn_List_HoloSort" Font="CRB_Pixel_O" ButtonType="Check" RadioGroup="" LAnchorPoint="1" LAnchorOffset="-181" TAnchorPoint="0" TAnchorOffset="0" RAnchorPoint="1" RAnchorOffset="-121" BAnchorPoint="1" BAnchorOffset="1" DT_VCENTER="1" DT_CENTER="1" TooltipType="OnCursor" Name="ChannelBtn" BGColor="ffffffff" TextColor="ffffffff" TooltipColor="" NormalTextColor="ffffffff" PressedTextColor="ffffffff" FlybyTextColor="ffffffff" PressedFlybyTextColor="ffffffff" DisabledTextColor="ffffffff" Text="" TextId="" Template="CRB_Datachron" GlobalRadioGroup="Rover_Monitor_Group" Tooltip="">

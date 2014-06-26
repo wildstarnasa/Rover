@@ -228,9 +228,9 @@ function Rover:OnWindowManagementReady()
 	Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "Rover"})
 	local bFound
 	for k,v in pairs(self.tBookmarks) do
-		bFound = true
 		local bSuccess, vWatch = pcall(loadstring("return " .. k))
 		if bSuccess then
+			bFound = true
 			self:AddWatch(k,vWatch)
 		end
 	end

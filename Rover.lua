@@ -228,7 +228,10 @@ function Rover:OnWindowManagementReady()
 	Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "Rover"})
 	if self.tBookmarks then
 		for k,v in pairs(self.tBookmarks) do
-			self:AddWatch(k,k)
+			local bSuccess, vWatch = pcall(loadstring("return " .. k))
+			if bSuccess then
+				self:AddWatch(k,vWatch)
+			end
 		end
 		self:OnRoverOn()
 	end
@@ -1262,8 +1265,11 @@ function Rover:OnBookmarkSelection( wndHandler, wndControl, hSelected, hPrevSele
 	local strBookmarkName = wndControl:GetNodeData(hSelected)
 	-- We double clicked and deleted the node, apparently that happens before single clicks.
 	if not strBookmarkName then return end
-
-	self:AddWatch(strBookmarkName, strBookmarkName)
+	local bSuccess, vWatch = pcall(loadstring("return " .. strBookmarkName))
+	if not bSuccess then
+		return
+	end
+	self:AddWatch(strBookmarkName, vWatch)
 end
 
 -- Handles someone pressing enter after typing the name of the bookmark to add

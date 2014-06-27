@@ -43,24 +43,24 @@ When tables are added to Rover, you will see the "+" sign in the tree control. E
 
 1. Tables are sorted by key names
 2. You can add some obvious variables to the tree by clicking on icons
-  * _G for the global state
-  * Myself for a reference to your character
-  * Target for a reference to your target
-  * "+ctrl" mode to hover over any clickable window and press <ctrl> to add the window
+  * `_G` for the global state
+  * `Myself` for a reference to your character
+  * `Target` for a reference to your target
+  * `+ctrl` mode to hover over any clickable window and press <ctrl> to add the window
     * Note: Windows that ignore mouse cannot be obtained this way
-  * "+c top" mode to hover over any clickable window and press <ctrl> to add the top level parent
+  * `+c top` mode to hover over any clickable window and press <ctrl> to add the top level parent
     * Note: Windows that ignore mouse cannot be obtained this way
-  * var will open a dialog box where you can enter in a string that will attempt to be converted to a variable.
+  * `var` will open a dialog box where you can enter in a string that will attempt to be converted to a variable.
     * Unique button will use the ADD_ALL option when adding.
 3. If you double click on a function it will execute it and post the results in the tree. Please note that:
   * By default it executes the function without any parameters. If they are required, or any other error occurs, you will get the error string printed in the tree.
   * Holding shift while double clicking will prompt for parameters
     1. Parameters are comma separated, lua will attempt to convert what you typed into a variable just as if it was in code
     2. Checkbox to indicate if self variable should be passed as well, Rover tries to make an intelligent decision on this but if it is incorrect you can change it.
-    3. Note: self is not a valid argument part for any of the other parameters you would need to indicate what that would be, example: Apollo.GetAddon("MyAddon").myVar would work, self.myVar would not.
+    3. Note: self is not a valid argument part for any of the other parameters you would need to indicate what that would be, example: `Apollo.GetAddon("MyAddon").myVar` would work, self.myVar would not.
   * To refresh the results double-click the function name again
   * Some functions when executed will DESTROY Wildstar.
-  * If you want to play a minigame, click on GameLib.UIStartCinematics() and try to restore the UI :)
+  * If you want to play a minigame, click on `GameLib.UIStartCinematics()` and try to restore the UI :)
 4. The ability to monitor events
   * Click the "Events" button
   * Click "Add Events"
@@ -89,5 +89,13 @@ When tables are added to Rover, you will see the "+" sign in the tree control. E
   * Type the name of the channel to monitor
   * Press Enter
   * Double click a monitored channel to remove the monitoring
-7. "Remove All" button to clear the Rover console
-8. You can call SendVarToRover and RemoveVarFromRover even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as dependency.
+7. Bookmarks
+  * Click the "Bookmarks" button
+  * Click "Add Bookmark"
+  * Type the variable that the bookmark represents
+  * Press Enter
+  * Single click a Bookmark to evaluate it
+  * Double click a Bookmark to remove it
+  * If any bookmarks are present then Rover will open on launch with them
+8. "Remove All" button to clear the Rover console
+9. You can call `SendVarToRover` and `RemoveVarFromRover` even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as dependency.

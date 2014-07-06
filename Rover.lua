@@ -158,10 +158,7 @@ function Rover:OnRestore(eLevel, tSavedData)
 	if eLevel ~= GameLib.CodeEnumAddonSaveLevel.Character then
 		return
 	end
-
-	for k,v in ipairs(tSavedData.tBookmarks) do
-		self:AddBookmark(v)
-	end
+	self.tPendingMarks = tSavedData.tBookmarks
 end
 
 -----------------------------------------------------------------------------------------------
@@ -226,16 +223,23 @@ end
 
 function Rover:OnWindowManagementReady()
 	Event_FireGenericEvent("WindowManagementAdd", {wnd = self.wndMain, strName = "Rover"})
-	local bFound
-	for k,v in pairs(self.tBookmarks) do
-		local bSuccess, vWatch = pcall(loadstring("return " .. k))
-		if bSuccess then
-			bFound = true
-			self:AddWatch(k,vWatch)
+
+	-- If we have pending bookmarks we need to process them then display the form if needed.
+	if self.tPendingMarks then
+		local bFound
+		for k,v in ipairs(self.tPendingMarks) do
+			self:AddBookmark(v)
+			local bSuccess, vWatch = pcall(loadstring("return " .. v))
+			if bSuccess then
+				bFound = true
+				self:AddWatch(v,vWatch)
+			end
 		end
-	end
-	if bFound then
-		self:OnRoverOn()
+		-- Remove Pending Bookmarks
+		self.tPendingMarks = nil
+		if bFound then
+			self:OnRoverOn()
+		end
 	end
 end
 
@@ -1237,8 +1241,9 @@ end
 
 -- Remove all Bookmarks
 function Rover:OnRemoveAllBookmarks( wndHandler, wndControl, eMouseButton )
-	for _, BookmarkNode in pairs(self.tBookmarks) do
+	for strBookmarkName, BookmarkNode in pairs(self.tBookmarks) do
 		self.wndMarkTree:DeleteNode(BookmarkNode)
+		self.tBookmarks[strBookmarkName] = nil
 	end
 end
 
@@ -1259,7 +1264,9 @@ end
 
 -- Double clicking Bookmarks deletes them
 function Rover:OnBookmarkDoubleClick( wndHandler, wndControl, hNode )
+	local strBookmarkName = wndControl:GetNodeData(hNode)
 	self.wndMarkTree:DeleteNode(hNode)
+	self.tBookmarks[strBookmarkName] = nil
 end
 
 -- Single click a bookmark to make it show up in rover

@@ -204,7 +204,10 @@
             <Control Class="Button" Base="BK3:btnHolo_Clear" Font="DefaultButton" ButtonType="PushButton" RadioGroup="" LAnchorPoint="1" LAnchorOffset="-28" TAnchorPoint="0" TAnchorOffset="2" RAnchorPoint="1" RAnchorOffset="-3" BAnchorPoint="1" BAnchorOffset="-4" DT_VCENTER="1" DT_CENTER="1" BGColor="UI_BtnBGDefault" TextColor="UI_BtnTextDefault" NormalTextColor="UI_BtnTextDefault" PressedTextColor="UI_BtnTextDefault" FlybyTextColor="UI_BtnTextDefault" PressedFlybyTextColor="UI_BtnTextDefault" DisabledTextColor="UI_BtnTextDefault" TooltipType="OnCursor" Name="CloseButton" TooltipColor="">
                 <Event Name="ButtonSignal" Function="OnTextBoxClose"/>
             </Control>
+            <Control Class="ActionConfirmButton" LAnchorPoint="0" LAnchorOffset="0" TAnchorPoint=".5" TAnchorOffset="-9" RAnchorPoint="0" RAnchorOffset="25" BAnchorPoint=".5" BAnchorOffset="11" RelativeToClient="1" Font="Default" Text="" BGColor="UI_WindowBGDefault" TextColor="UI_WindowTextDefault" Template="Default" TooltipType="OnCursor" Name="ActionConfirmButton" TooltipColor="" Sprite="CRB_ChatLogSprites:btnCL_Save" Tooltip="" TooltipId="LuaError_CopyToClipboard" Picture="0" Base="CRB_ChatLogSprites:btnCL_Save">
+                <Event Name="MouseEnter" Function="PrepareCopy"/>
+            </Control>
         </Control>
-        <Control Class="Window" LAnchorPoint="0" LAnchorOffset="0" TAnchorPoint="0" TAnchorOffset="31" RAnchorPoint="1" RAnchorOffset="0" BAnchorPoint="1" BAnchorOffset="0" RelativeToClient="1" Font="Nameplates" Text="" BGColor="UI_WindowBGDefault" TextColor="UI_WindowTextDefault" Template="CRB_TooltipSimple" TooltipType="OnCursor" Name="Text" TooltipColor="" Border="1" IgnoreMouse="1" UseTemplateBG="1" DT_WORDBREAK="1" TextId="Warparty_DisbandConfirm"/>
+        <Control Class="EditBox" LAnchorPoint="0" LAnchorOffset="0" TAnchorPoint="0" TAnchorOffset="31" RAnchorPoint="1" RAnchorOffset="0" BAnchorPoint="1" BAnchorOffset="0" RelativeToClient="1" Font="Nameplates" Text="" BGColor="UI_WindowBGDefault" TextColor="UI_WindowTextDefault" Template="CRB_TooltipSimple" TooltipType="OnCursor" Name="Text" TooltipColor="" TextId="Warparty_DisbandConfirm" Picture="0" Border="1" UseTemplateBG="1" MultiLine="1" DT_WORDBREAK="1" ReadOnly="1" Tooltip=""/>
     </Form>
 </Forms>

@@ -1,36 +1,24 @@
--- https://forums.wildstar-online.com/forums/index.php?/topic/15859-addon-introducing-rover/?p=161111
-local function spairs(t)
-	-- Collect keys
-	local keys = {}
-	local sort = true
-
-	for k in pairs(t) do
-		keys[#keys + 1] = k
-		if type(k) ~= "string" then
-			sort = false
-		end
-	end
-
-	if sort then
-		table.sort(keys)
-	end
-
-	-- Return the iterator function
-	local i = 0
-	return function()
-		i = i + 1
-		if keys[i] then
-			return keys[i], t[keys[i]]
-		end
-	end
-end
-
 -----------------------------------------------------------------------------------------------
 -- Client Lua Script for Rover
--- Copyright (c) NCsoft. All rights reserved
 -----------------------------------------------------------------------------------------------
 
 require "Window"
+
+-----------------------------------------------------------------------------------------------
+-- Upvalues
+-----------------------------------------------------------------------------------------------
+local ipairs, pairs, next, tonumber, tostring, type = ipairs, pairs, next, tonumber, tostring, type
+local tsort, tinsert, unpack = table.sort, table.insert, unpack
+local strformat = string.format
+local pcall, loadstring, getmetatable, setmetatable = pcall, loadstring, getmetatable, setmetatable
+local _G = _G
+
+-- Wildstar APIs
+local Apollo, ApolloTimer, GameLib, XmlDoc = Apollo, ApolloTimer, GameLib, XmlDoc
+local ICCommLib = ICCommLib
+local Event_FireGenericEvent = Event_FireGenericEvent
+
+--GLOBALS: SendVarToRover, RemoveVarFromRover
 
 -----------------------------------------------------------------------------------------------
 -- Rover Module Definitions
@@ -91,12 +79,41 @@ Rover.userdataDisplay = {
 }
 
 -----------------------------------------------------------------------------------------------
+-- Helper functions
+-----------------------------------------------------------------------------------------------
+local function spairs(t)
+	-- Collect keys
+	local keys = {}
+	local sort = true
+
+	for k in pairs(t) do
+		keys[#keys + 1] = k
+		if type(k) ~= "string" then
+			sort = false
+		end
+	end
+
+	if sort then
+		tsort(keys)
+	end
+
+	-- Return the iterator function
+	local i = 0
+	return function()
+		i = i + 1
+		if keys[i] then
+			return keys[i], t[keys[i]]
+		end
+	end
+end
+
+-----------------------------------------------------------------------------------------------
 -- Initialization
 -----------------------------------------------------------------------------------------------
 function Rover:new(o)
-  o = o or {}
-  setmetatable(o, self)
-  self.__index = self
+	o = o or {}
+	setmetatable(o, self)
+	self.__index = self
 
 	self.bIsInitialized = false
 	self.bModifierAddAsTop = false
@@ -126,7 +143,7 @@ function Rover:OnLoad()
 	for k,v in pairs(tTOCXml) do
 		if v.__XmlNode == "DocData" then
 			local pDir = Apollo.GetAssetFolder() .. "\\" .. v.Name
-			table.insert(tXMLRefs, Apollo.GetAssetFolder() .. "\\" .. v.Name)
+			tinsert(tXMLRefs, Apollo.GetAssetFolder() .. "\\" .. v.Name)
 			self.tXML[nIndex] = XmlDoc.CreateFromFile(Apollo.GetAssetFolder() .. "\\" .. v.Name):ToTable()
 			nIndex = nIndex + 1
 		end
@@ -148,7 +165,7 @@ function Rover:OnSave(eLevel)
 		tBookmarks = {},
 	}
 	for k,v in pairs(self.tBookmarks) do
-		table.insert(tSave.tBookmarks, k)
+		tinsert(tSave.tBookmarks, k)
 	end
 
 	return tSave
@@ -282,7 +299,7 @@ function Rover:UpdateTimeStamp(hNode)
 		nHour = nHour - 12
 		strAMPM = "PM"
 	end
-	local strTime = string.format("%d:%02d:%02d %s", nHour, tTime.nMinute, tTime.nSecond, strAMPM)
+	local strTime = strformat("%d:%02d:%02d %s", nHour, tTime.nMinute, tTime.nSecond, strAMPM)
 	self.wndTree:SetNodeText(hNode, eRoverColumns.LastUpdate, strTime)
 end
 
@@ -310,7 +327,7 @@ function Rover:OnSizeChanged( wndHandler, wndControl )
 	-- DOUBLE DOG DERP!! TreeControl doesn't have a header row (YET) so we have to
 	-- explicitly adjust column widths as the parent's size changes
 	for nLabelNumber = 1,4 do
-		local strLabel = string.format("s_Column%d", nLabelNumber)
+		local strLabel = strformat("s_Column%d", nLabelNumber)
 		local wndLabel = self.wndMain:FindChild(strLabel)
 		local nWidth = wndLabel:GetWidth()
 		if nLabelNumber == 1 or nLabelNumber == 4 then
@@ -433,7 +450,7 @@ function Rover:OnTwoClicks( wndHandler, wndControl, hNode )
 
 	-- Play sounds, courtesy of SinusPi
 	if type(var) == "number" and self.wndTree:GetNodeData(hParent) == _G.Sound then
-		Sound.Play(var)
+		_G.Sound.Play(var)
 		return
 	elseif type(var) == "string" then
 		self:GenerateTextBox(self.wndTree:GetNodeText(hNode, eRoverColumns.VarName), var)
@@ -611,6 +628,10 @@ end
 
 function Rover:OnTextBoxClose( wndHandler, wndControl, eMouseButton )
 	wndControl:GetParent():GetParent():Destroy()
+end
+
+function Rover:PrepareCopy(wndHandler, wndControl)
+	wndControl:SetActionData(GameLib.CodeEnumConfirmButtonType.CopyToClipboard, wndControl:GetParent():GetParent():FindChild("Text"):GetText())
 end
 
 -----------------------------------------------------------------------------------------------
@@ -903,7 +924,7 @@ function Rover:BuildTranscriptor(strAddon)
 		-- Check to see if we have this addon set for detailed recording
 		if tRover.tTranscripted[strAddonName][strDetailed] then
 			-- Detailed means every instance that occurs ... probably extremely spammy!, also since its detailed, lets send rover whatever it was trying to retrieve
-			self:AddWatch(string.format("%s%s%s (#%d)", strAddonName, strObjType, key, nCount), retVal, Rover.ADD_ONCE)
+			self:AddWatch(strformat("%s%s%s (#%d)", strAddonName, strObjType, key, nCount), retVal, Rover.ADD_ONCE)
 			-- Increment the counter
 			nCount = nCount + 1
 		else -- Normal function calls as they occur logging
@@ -915,7 +936,7 @@ function Rover:BuildTranscriptor(strAddon)
 				tRover.tTranscripted[strAddonName][key] = tRover.tTranscripted[strAddonName][key] + 1
 			end
 			-- Send to Rover and replace the existing value, causes it to pop down to the bottom.
-			self:AddWatch(string.format("%s%s%s", strAddonName, strObjType, key), 'Calls: ' .. tRover.tTranscripted[strAddonName][key], Rover.ADD_DEFAULT)
+			self:AddWatch(strformat("%s%s%s", strAddonName, strObjType, key), 'Calls: ' .. tRover.tTranscripted[strAddonName][key], Rover.ADD_DEFAULT)
 		end
 
 		return retVal
@@ -923,23 +944,23 @@ function Rover:BuildTranscriptor(strAddon)
 end
 
 local function deepcopy(orig)
-    local orig_type = type(orig)
-    local copy
-    if orig_type == 'table' then
-        copy = {}
-        for orig_key, orig_value in next, orig, nil do
-        	-- Inifinite loops are bad okay, lets just put indexes to the same state
-        	if orig_key == "__index" or orig_key == "__newindex" then
-        		copy[orig_key] = orig_value
-        	else
-            	copy[deepcopy(orig_key)] = deepcopy(orig_value)
-            end
-        end
-        setmetatable(copy, deepcopy(getmetatable(orig)))
-    else -- number, string, boolean, etc
-        copy = orig
-    end
-    return copy
+	local orig_type = type(orig)
+	local copy
+	if orig_type == 'table' then
+		copy = {}
+		for orig_key, orig_value in next, orig, nil do
+			-- Inifinite loops are bad okay, lets just put indexes to the same state
+			if orig_key == "__index" or orig_key == "__newindex" then
+				copy[orig_key] = orig_value
+			else
+				copy[deepcopy(orig_key)] = deepcopy(orig_value)
+			end
+		end
+		setmetatable(copy, deepcopy(getmetatable(orig)))
+	else -- number, string, boolean, etc
+		copy = orig
+	end
+	return copy
 end
 
 -- Adds a metatable with the addons previous contents to an addon.

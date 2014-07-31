@@ -236,6 +236,14 @@ function Rover:OnDocumentLoaded()
 		end
 		self.tPreInitData[sVarName] = nil
 	end
+	for strEventName, hNode in pairs(self.tMonitoredEvents) do
+		if hNode == -1 then
+			-- Add new entry to tree for viewing
+			local hNewNode = self.wndEvtTree:AddNode(0, strEventName, "", strEventName)
+			-- Store reference to node
+			self.tMonitoredEvents[strEventName] = hNewNode
+		end
+	end
 end
 
 function Rover:OnWindowManagementReady()
@@ -591,7 +599,7 @@ function Rover:OnRemoveVarClicked(wndHandler, wndControl)
 		local strMonitorName, strItemName = strText:match("(%w-): ([^%s]+)")
 
 		if strMonitorName == "Event" then
-			self:OnRemoveEventMonitor(strItemName)
+			self:RemoveEventMonitor(strItemName)
 		elseif strMonitorName == "Channel" then
 			self:OnRemoveChannelListening(strItemName)
 		else
@@ -742,56 +750,6 @@ end
 -----------------------------------------------------------------------------------------------
 -- Rover Event Monitoring
 -----------------------------------------------------------------------------------------------
-
-function Rover:AddEventMonitor(eventName, strDesc)
--- If we are already monitoring this then just stop now!
-	if self.tMonitoredEvents[eventName] ~= nil then
-		return
-	end
-
-	-- Can't add monitoring of Rover events... lets not break Rover please.
-	if eventName == "SendVarToRover" or eventName == "RemoveVarFromRover" then
-		return
-	end
-
-	if self.wndEvtTree then
-		-- Add new entry to tree for viewing
-		local hNewNode = self.wndEvtTree:AddNode(0, eventName, "", eventName)
-
-		-- Store reference to node
-		self.tMonitoredEvents[eventName] = { node = hNewNode }
-	else
-		--no node to add now
-		self.tMonitoredEvents[eventName] = {}
-	end
-	
-	-- Build handler name, use the prefix + eventName
-	local handlerName = handlerPrefix..eventName
-	-- Create handler and assign it to rover
-	Rover[handlerName] = self:BuildMonitorFunc(eventName, strDesc)
-	-- Register handler with Apollo
-	Apollo.RegisterEventHandler(eventName, handlerName, self)
-end
-
-function Rover:RemoveEventMonitor(eventName)
-	-- If we aren't monitoring this event, stop now!
-	if self.tMonitoredEvents[eventName] ~= nil then
-		if self.tMonitoredEvents[eventName].node ~= nil then
-			-- Remove display node for event
-			self.wndEvtTree:DeleteNode(self.tMonitoredEvents[eventName].node)
-		end
-
-		-- Build handler name, use the prefix + eventName
-		local handlerName = handlerPrefix..eventName
-		-- Clear out monitored event reference
-		self.tMonitoredEvents[eventName] = nil
-		-- Remove eventhandler function
-		Rover[handlerName] = nil
-		-- Tell Apollo we don't want to listen for this event anymore.
-		Apollo.RemoveEventHandler(eventName, self)
-	end
-end
-
 local function ParseEventXML(tXML)
 	for _,v in ipairs(tXML) do
 		if v.__XmlNode == "Event" then
@@ -813,7 +771,7 @@ function Rover:OnAddAllEvents()
 	end
 	for k,v in spairs(tEvents) do
 		if not tBlacklistedEvents[k] then
-			self:OnAddEventMonitor(k, v)
+			self:AddEventMonitor(k, v)
 		end
 	end
 end
@@ -829,7 +787,7 @@ function Rover:BuildMonitorFunc(eventName, strDesc)
 end
 
 -- Adds Event Monitoring for specified event
-function Rover:OnAddEventMonitor(eventName, strDesc)
+function Rover:AddEventMonitor(eventName, strDesc)
 	-- If we are already monitoring this then just stop now!
 	if self.tMonitoredEvents[eventName] ~= nil then
 		return
@@ -840,10 +798,14 @@ function Rover:OnAddEventMonitor(eventName, strDesc)
 		return
 	end
 
-	-- Add new entry to tree for viewing
-	local hNewNode = self.wndEvtTree:AddNode(0, eventName, "", eventName)
-	-- Store reference to node
-	self.tMonitoredEvents[eventName].node = hNewNode
+	if self.bIsInitialized == false then
+		self.tMonitoredEvents[eventName] = -1
+	else
+		-- Add new entry to tree for viewing
+		local hNewNode = self.wndEvtTree:AddNode(0, eventName, "", eventName)
+		-- Store reference to node
+		self.tMonitoredEvents[eventName] = hNewNode
+	end
 
 	-- Build handler name, use the prefix + eventName
 	local handlerName = handlerPrefix..eventName
@@ -854,11 +816,13 @@ function Rover:OnAddEventMonitor(eventName, strDesc)
 end
 
 -- Remove event monitoring for specified event
-function Rover:OnRemoveEventMonitor(eventName)
+function Rover:RemoveEventMonitor(eventName)
 	-- If we aren't monitoring this event, stop now!
 	if self.tMonitoredEvents[eventName] ~= nil then
-		-- Remove display node for event
-		self.wndEvtTree:DeleteNode(self.tMonitoredEvents[eventName].node)
+		if self.tMonitoredEvents[eventName] > -1 then
+			-- Remove display node for event
+			self.wndEvtTree:DeleteNode(self.tMonitoredEvents[eventName])
+		end
 
 		-- Build handler name, use the prefix + eventName
 		local handlerName = handlerPrefix..eventName
@@ -877,17 +841,16 @@ function Rover:OnEventsCloseClick( wndHandler, wndControl, eMouseButton )
 	self:OnEventsMonitorToggle()
 end
 
--- Double clicking events deletes them, so lets get the event name then use OnRemoveEventMonitor
+-- Double clicking events deletes them, so lets get the event name then use RemoveEventMonitor
 function Rover:OnEventDoubleClick( wndHandler, wndControl, hNode )
 	local strEventName = wndControl:GetNodeData(hNode)
-	self:OnRemoveEventMonitor(strEventName)
+	self:RemoveEventMonitor(strEventName)
 end
 
 -- Remove all Monitored Events
 function Rover:OnRemoveAllEventMonitors( wndHandler, wndControl, eMouseButton )
-	for _, EventNode in pairs(self.tMonitoredEvents) do
-		local eventName = self.wndEvtTree:GetNodeData(EventNode.node)
-		self:OnRemoveEventMonitor(eventName)
+	for eventName, EventNode in pairs(self.tMonitoredEvents) do
+		self:RemoveEventMonitor(eventName)
 	end
 end
 
@@ -913,7 +876,7 @@ end
 -- Handles someone pressing enter after typing the name of the event to monitor
 --	Also hides entry section once entered.
 function Rover:OnEventInputReturn( wndHandler, wndControl, strText )
-	self:OnAddEventMonitor(strText)
+	self:AddEventMonitor(strText)
 	wndControl:SetText("")
 	self.wndMain:FindChild("AddEventBtn"):SetCheck(false)
 	self:OnAddEventToggle()

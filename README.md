@@ -1,10 +1,10 @@
-![alt text](https://i.imgsafe.org/aadf842fd0.png "Logo")
+![alt text](https://i.imgsafe.org/ab34befcb2.png "Logo")
 
 Rover
 =====
 _A runtime variable inspector Addon_
 
-![alt text](https://img.shields.io/badge/WildStar API-15-9975B9.svg "API Version of decompiled usermanual")
+![alt text](https://img.shields.io/badge/WildStar%20API-15-9975B9.svg "Latest compatible API Version")
 
 __Rover__ was originally written by Jon "Bitwise" Wiesman, Ex Lead Client Engineer at Carbine.
 Everything listed under Additional Functionality was added by @Sinaloit and Garet Jax. And from v1.40 on by @Hammster with initial work from @Zod-

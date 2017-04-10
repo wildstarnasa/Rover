@@ -35,6 +35,7 @@ local tXMLRefs = {}
 local tEvents = {}
 local tBlacklistedEvents = {
 	["NextFrame"] = true,
+	["FrameCount"] = true,
 	["ActionBarDescriptionSpell"] = true,
 }
 

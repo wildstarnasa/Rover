@@ -1,10 +1,13 @@
+![alt text](https://i.imgsafe.org/ab34befcb2.png "Logo")
+
 Rover
 =====
+_A runtime variable inspector Addon_
 
-A runtime variable inspector Addon
+![alt text](https://img.shields.io/badge/WildStar%20API-15-9975B9.svg "Latest compatible API Version")
 
-Rover was originally written by Jon "Bitwise" Wiesman, Lead Client Engineer at Carbine.
-Everything listed under Additional Functionality was added by @Sinaloit and Garet Jax.
+__Rover__ was originally written by Jon "Bitwise" Wiesman, Ex Lead Client Engineer at Carbine.
+Everything listed under Additional Functionality was added by @Sinaloit and Garet Jax. And from v1.40 on by @Hammster with initial work from @Zod-
 
 To open the Rover watch window type: /rover in the chat window.
 
@@ -12,28 +15,24 @@ Methods of adding a watch to Rover:
 
 Event:
 ```Lua
-    Event_FireGenericEvent("SendVarToRover", "WatchName", tSomeVariable, <iOption>)
+Event_FireGenericEvent("SendVarToRover", "WatchName", tSomeVariable, <iOption>)
 ```
 
 Function:
 ```Lua
-    SendVarToRover("WatchName", tSomeVarible, <iOption>)
-```
-
-or
-
-```Lua
-    local Rover = Apollo.GetAddon("Rover")
-    Rover:AddWatch("WatchName", tSomeVariable, <iOption>)
+SendVarToRover("WatchName", tSomeVarible, <iOption>)
+-- or
+local Rover = Apollo.GetAddon("Rover")
+Rover:AddWatch("WatchName", tSomeVariable, <iOption>)
 ```
 
 Rover supports the following options for adding watches:
 
-|iOption|Result|
-|-------|------|
+|iOption|Result|Hint|
+|-------|------|------|
 |Rover.ADD_ALL or 0| Var added even if already present |then the var will be added separately to Rover even if another with the same name is already added.
 |Rover.ADD_ONCE or 1| Var added only if not present |
-|Rover.ADD_DEFAULT, 2, or no iOption| Var overwrites old value if any|
+|Rover.ADD_DEFAULT, 2, or no iOption| Var overwrites old value if any |
 
 You'll notice that the first argument to SendVarToRover is the name that you want to Watch to be named inside of Rover, while the second argument is the actual variable to watch, the third optional argument allows you to handle how the variable is added slightly differently as indicated above.
 
@@ -51,12 +50,12 @@ When tables are added to Rover, you will see the "+" sign in the tree control. E
   * `+c top` mode to hover over any clickable window and press <ctrl> to add the top level parent
     * Note: Windows that ignore mouse cannot be obtained this way
   * `var` will open a dialog box where you can enter in a string that will attempt to be converted to a variable.
-    * Unique button will use the ADD_ALL option when adding.
+    * The unique button will use the ADD_ALL option when adding.
 3. If you double click on a function it will execute it and post the results in the tree. Please note that:
-  * By default it executes the function without any parameters. If they are required, or any other error occurs, you will get the error string printed in the tree.
+  * By default, it executes the function without any parameters. If they are required, or any other error occurs, you will get the error string printed in the tree.
   * Holding shift while double clicking will prompt for parameters
     1. Parameters are comma separated, lua will attempt to convert what you typed into a variable just as if it was in code
-    2. Checkbox to indicate if self variable should be passed as well, Rover tries to make an intelligent decision on this but if it is incorrect you can change it.
+    2. Checkbox to indicate if the `self` variable should be passed as well, Rover tries to make an intelligent decision on this but if it is incorrect you can change it.
     3. Note: self is not a valid argument part for any of the other parameters you would need to indicate what that would be, example: `Apollo.GetAddon("MyAddon").myVar` would work, self.myVar would not.
   * To refresh the results double-click the function name again
   * Some functions when executed will DESTROY Wildstar.
@@ -98,4 +97,4 @@ When tables are added to Rover, you will see the "+" sign in the tree control. E
   * Double click a Bookmark to remove it
   * If any bookmarks are present then Rover will open on launch with them
 8. "Remove All" button to clear the Rover console
-9. You can call `SendVarToRover` and `RemoveVarFromRover` even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as dependency.
+9. You can call `SendVarToRover` and `RemoveVarFromRover` even before Rover is fully loaded, and the data will be added to the list anyway. That means that you can debug your addon initialization without setting Rover as a dependency.
